@@ -4,16 +4,36 @@ class MoviesController < ApplicationController
   # GET /movies or /movies.json
   def index
     @all_ratings = Movie.all_ratings
+    redirect_needed = false
 
+    #1: Ratings
     if params[:ratings].present?
       @ratings_to_show = params[:ratings].keys
+      session[:ratings] = params[:ratings]
+    elsif session[:ratings].present?
+      @ratings_to_show = session[:ratings].keys
+      redirect_needed = true
     else
       @ratings_to_show = @all_ratings
     end
 
-    @sort_by = params[:sort_by]
+    #2: Sorting
+    if params[:sort_by].present?
+      @sort_by = params[:sort_by]
+      session[:sort_by] = @sort_by
+    elsif session[:sort_by].present?
+      @sort_by = session[:sort_by]
+      redirect_needed = true
+    end
+
+    #3: If params missing from URL but found in session, redirect
+    if redirect_needed
+      flash.keep
+      redirect_to movies_path(sort_by: @sort_by, ratings: @ratings_to_show.index_with('1')) and return
+    end
+
+    #4: Query database
     sort_column = %w(title release_date).include?(@sort_by) ? @sort_by : nil
-    
     @movies = Movie.with_ratings(@ratings_to_show)
     @movies = @movies.order(sort_column) if sort_column
   end
